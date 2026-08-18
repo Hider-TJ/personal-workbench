@@ -70,6 +70,23 @@ create table if not exists used_keys (
   owner text not null
 );
 
+create table if not exists habits (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  emoji text,
+  color text,
+  created_at timestamptz default now(),
+  owner text not null
+);
+
+create table if not exists habit_logs (
+  id uuid primary key default gen_random_uuid(),
+  habit_id uuid,
+  date date,
+  created_at timestamptz default now(),
+  owner text not null
+);
+
 -- 索引
 create index if not exists idx_todos_owner on todos(owner);
 create index if not exists idx_books_owner on books(owner);
@@ -77,6 +94,8 @@ create index if not exists idx_edu_owner on edu_records(owner);
 create index if not exists idx_watchlist_owner on watchlist(owner);
 create index if not exists idx_etf_advice_owner on etf_advice(owner);
 create index if not exists idx_used_keys_owner on used_keys(owner);
+create index if not exists idx_habits_owner on habits(owner);
+create index if not exists idx_habit_logs_owner on habit_logs(owner);
 
 -- 个人使用：关闭 RLS（如需更安全请改为开启并编写 owner 策略）
 alter table todos disable row level security;
@@ -86,3 +105,5 @@ alter table edu_progress disable row level security;
 alter table watchlist disable row level security;
 alter table etf_advice disable row level security;
 alter table used_keys disable row level security;
+alter table habits disable row level security;
+alter table habit_logs disable row level security;
