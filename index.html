@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>专属工作台</title>
+<style>
+  :root {
+    --bg: #f4f6fa; --card: #ffffff; --border: #e5e9f0;
+    --text: #1f2733; --muted: #7b8494; --primary: #2563eb;
+    --primary-weak: #eff4ff; --green: #16a34a;
+    --red: #dc2626; --amber: #d97706; --amber-weak: #fff8eb;
+    --radius: 14px; --shadow: 0 1px 3px rgba(16,24,40,.06), 0 1px 2px rgba(16,24,40,.04);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  h1 { font-size: 24px; letter-spacing: .5px; }
+  h1 .dot { color: var(--primary); }
+  #today { color: var(--muted); font-size: 14px; }
+  .hdr-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .local-badge { font-size: 12px; color: var(--muted); background: #f2f4f7; border-radius: 999px; padding: 3px 10px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
+  .stat .num { font-size: 26px; font-weight: 700; margin-top: 2px; }
+  .stat .num small { font-size: 13px; font-weight: 400; color: var(--muted); margin-left: 2px; }
+  .stat .label { color: var(--muted); font-size: 13px; }
+  .stat.blue .num { color: var(--primary); } .stat.green .num { color: var(--green); }
+  .stat.amber .num { color: var(--amber); } .stat.red .num { color: var(--red); }
+  .stat.pink .num { color: #db2777; }
+
+  nav { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  nav button { border: 1px solid var(--border); background: var(--card); color: var(--muted); padding: 8px 18px; border-radius: 999px; font-size: 14px; cursor: pointer; transition: all .15s; }
+  nav button.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 500; }
+  nav button:hover:not(.active) { color: var(--text); border-color: #c9d2e0; }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card h3 { font-size: 15px; padding: 14px 18px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card h3::before { content: ""; width: 4px; height: 16px; background: var(--primary); border-radius: 2px; flex-shrink: 0; }
+  .card .body { padding: 14px 18px 18px; }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type=text], input[type=date], input[type=number], select, textarea {
+    border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 14px; background: #fbfcfe; color: var(--text); outline: none; transition: border .15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--primary); background: #fff; }
+  .btn { border: none; background: var(--primary); color: #fff; padding: 9px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.ghost { background: transparent; color: var(--muted); padding: 6px 10px; border: none; }
+  .btn.ghost:hover { color: var(--red); background: #fef2f2; }
+  .btn.small { padding: 6px 14px; font-size: 13px; }
+
+  ul.list { list-style: none; }
+  ul.list li { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px dashed var(--border); }
+  ul.list li:last-child { border-bottom: none; }
+  .todo-title { flex: 1; font-size: 14px; line-height: 1.5; word-break: break-all; }
+  li.done .todo-title { text-decoration: line-through; color: var(--muted); }
+  .checkbox { width: 19px; height: 19px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
+  .tag { font-size: 12px; padding: 2px 9px; border-radius: 999px; flex-shrink: 0; }
+  .tag.high { background: #fef2f2; color: var(--red); } .tag.normal { background: var(--primary-weak); color: var(--primary); }
+  .tag.low { background: #f2f4f7; color: var(--muted); }
+  .tag.date { background: var(--amber-weak); color: var(--amber); }
+  .tag.overdue { background: #fef2f2; color: var(--red); font-weight: 600; }
+  .tag.study { background: var(--primary-weak); color: var(--primary); }
+  .tag.exercise { background: #ecfdf3; color: var(--green); }
+
+  .edu-item { padding: 12px 4px; border-bottom: 1px dashed var(--border); }
+  .edu-item:last-child { border-bottom: none; }
+  .edu-date { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .edu-content { font-size: 14px; white-space: pre-wrap; line-height: 1.6; word-break: break-all; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 13px; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 10px; border-bottom: 1px dashed var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .num-cell { font-variant-numeric: tabular-nums; text-align: right; }
+  th.num-cell { text-align: right; }
+  .up { color: var(--red); } .down { color: var(--green); }
+
+  .links { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .link-card { display: block; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; text-decoration: none; color: var(--text); transition: all .15s; background: #fbfcfe; }
+  .link-card:hover { border-color: var(--primary); background: var(--primary-weak); transform: translateY(-1px); }
+  .link-card .t { font-weight: 600; font-size: 14px; margin-bottom: 3px; }
+  .link-card .d { font-size: 12px; color: var(--muted); }
+
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 26px 0; }
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: #1f2733; color: #fff; padding: 10px 22px; border-radius: 999px; font-size: 14px; opacity: 0; transition: all .25s; z-index: 99; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .muted { color: var(--muted); font-size: 13px; }
+  details.etf-day { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; background: #fbfcfe; }
+  details.etf-day summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+  details.etf-day pre { white-space: pre-wrap; font-family: inherit; font-size: 13.5px; line-height: 1.7; margin-top: 10px; color: #3a4354; word-break: break-all; }
+  .backup-bar { text-align: right; margin-top: -6px; margin-bottom: 14px; }
+  .cloud-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--green); background: #ecfdf3; border-radius: 999px; padding: 2px 10px; margin-left: 8px; vertical-align: middle; }
+
+  .progress-outer { background: #eef1f6; border-radius: 999px; height: 12px; overflow: hidden; flex: 1; }
+  .progress-inner { height: 100%; border-radius: 999px; transition: width .4s ease; }
+  .progress-row { display: flex; align-items: center; gap: 12px; margin: 8px 0 16px; }
+  .progress-label { font-size: 13px; color: var(--muted); width: 90px; flex-shrink: 0; }
+  .progress-val { font-size: 13px; font-weight: 600; width: 90px; text-align: right; flex-shrink: 0; }
+  .quote-time { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .spin { display: inline-block; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .book-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 6px; }
+  .book-summary .cell { background: #fbfcfe; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+  .book-summary .k { font-size: 12px; color: var(--muted); }
+  .book-summary .v { font-size: 18px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .wx-result-box { background: #fbfcfe; border: 1px dashed var(--border); border-radius: 12px; padding: 16px; margin-top: 12px; }
+  .wx-qr { width: 180px; height: 180px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+
+  @media (max-width:680px){
+    .wrap{ padding:14px 12px 50px; }
+    h1{ font-size:20px; }
+    .stats{ grid-template-columns: repeat(2,1fr); }
+    nav button{ padding:7px 12px; font-size:13px; }
+    .links{ grid-template-columns:1fr; }
+    .book-summary{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="wb-title">我的<span class="dot">专属工作台</span></h1>
+    <div class="hdr-right">
+      <span class="local-badge" id="store-badge" title="数据保存在你当前使用的浏览器中，不会上传服务器">💾 本地存储</span>
+      <button class="btn ghost small" onclick="toggleSettings()">⚙ 设置</button>
+      <div id="today"></div>
+    </div>
+  </header>
+
+  <section class="card" id="settings-panel" style="display:none">
+    <h3>工作台设置</h3>
+    <div class="body">
+      <div class="row" style="margin-bottom:10px">
+        <input type="text" id="set-owner" placeholder="你的称呼（如：汤工）" style="width:150px">
+        <input type="text" id="set-title" placeholder="工作台名称（如：专属工作台）" style="flex:1;min-width:160px">
+      </div>
+      <div style="border-top:1px dashed var(--border); margin:4px 0 10px; padding-top:10px">
+        <div class="muted" style="margin-bottom:8px">☁ <b>微信同步（云端多设备 · Supabase）</b>：填写后，你在微信里通过快捷录入添加的待办/记账/打卡会保存到云端，手机与电脑多设备实时同步；留空则仅本机存储。详见 README。</div>
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="set-sburl" placeholder="Supabase URL（如 https://xxxx.supabase.co）" style="flex:1;min-width:200px">
+          <input type="text" id="set-sbkey" placeholder="Anon Key（公开，可放前端）" style="flex:1;min-width:200px">
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="set-pass" placeholder="同步口令（自定义，区分你的数据，请牢记）" style="flex:1;min-width:200px">
+          <button class="btn ghost small" onclick="testCloud()">测试连接</button>
+        </div>
+        <div id="cloud-status" class="muted"></div>
+      </div>
+      <div class="row">
+        <button class="btn small" onclick="saveSettings()">保存设置</button>
+        <span class="muted">同步口令仅存于本浏览器；云端数据用口令隔离，请牢记。</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="stats">
+    <div class="card stat blue"><div class="label">待办进行中</div><div class="num" id="st-todo">–</div></div>
+    <div class="card stat amber"><div class="label">已逾期</div><div class="num" id="st-overdue">–</div></div>
+    <div class="card stat green"><div class="label">本月结余</div><div class="num" id="st-income">–<small>元</small></div></div>
+    <div class="card stat pink"><div class="label">识字进度</div><div class="num" id="st-edu" style="font-size:16px">–</div></div>
+  </div>
+
+  <div class="backup-bar">
+    <button class="btn ghost" onclick="exportData()">导出备份</button>
+    <button class="btn ghost" onclick="importData()">导入备份</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(event)">
+  </div>
+
+  <nav>
+    <button data-panel="todo" class="active">📋 待办事项</button>
+    <button data-panel="invest">📈 投资跟踪</button>
+    <button data-panel="book">💰 记账本</button>
+    <button data-panel="edu">👧 小孩教育</button>
+    <button data-panel="link">⚡ 快捷入口</button>
+  </nav>
+
+  <!-- 待办 -->
+  <section class="panel active" id="panel-todo">
+    <div class="card">
+      <h3>新增待办</h3>
+      <div class="body">
+        <div class="row">
+          <input type="text" id="todo-title" placeholder="要做什么？" style="flex:1; min-width:220px">
+          <input type="date" id="todo-date">
+          <select id="todo-pri">
+            <option value="normal">普通</option>
+            <option value="high">重要</option>
+            <option value="low">较低</option>
+          </select>
+          <button class="btn" onclick="addTodo()">添加</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>待办列表 <span class="muted" id="todo-count"></span></h3>
+      <div class="body">
+        <div class="row" style="margin-bottom:10px">
+          <select id="todo-filter" onchange="loadTodos()">
+            <option value="open">未完成</option>
+            <option value="all">全部</option>
+            <option value="done">已完成</option>
+          </select>
+        </div>
+        <ul class="list" id="todo-list"><div class="empty"><span class="spin">◌</span> 加载中…</div></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 投资跟踪 -->
+  <section class="panel" id="panel-invest">
+    <div class="card">
+      <h3>持仓自选 · 实时行情
+        <span class="quote-time" id="quote-time"></span>
+        <button class="btn ghost small" style="margin-left:auto" onclick="loadQuotes(true)">刷新</button>
+      </h3>
+      <div class="body">
+        <table>
+          <thead><tr>
+            <th>名称</th><th>代码</th><th class="num-cell">现价</th><th class="num-cell">涨跌幅</th>
+            <th class="num-cell">成本</th><th class="num-cell">浮动盈亏</th><th>备注</th><th></th>
+          </tr></thead>
+          <tbody id="stock-list">
+            <tr><td colspan="8" class="empty"><span class="spin">◌</span> 加载中…</td></tr>
+          </tbody>
+        </table>
+        <div class="row" style="margin-top:12px">
+          <input type="text" id="stk-name" placeholder="名称" style="width:100px">
+          <input type="text" id="stk-code" placeholder="代码（如601111）" style="width:140px">
+          <input type="number" id="stk-cost" placeholder="成本价（可选）" style="width:130px" step="0.001">
+          <input type="text" id="stk-note" placeholder="备注（可选）" style="width:110px">
+          <button class="btn small" onclick="addStock()">+ 加自选</button>
+        </div>
+        <p class="muted" style="margin-top:8px">沪市（6/9开头股票、5开头基金）与深市（0/3开头股票、1开头基金）自动识别。</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>ETF 定投自选 · 实时行情
+        <span class="quote-time" id="etf-quote-time"></span>
+      </h3>
+      <div class="body">
+        <table>
+          <thead><tr><th>名称</th><th>代码</th><th class="num-cell">现价</th><th class="num-cell">涨跌幅</th><th></th></tr></thead>
+          <tbody id="etf-quote-list">
+            <tr><td colspan="5" class="empty"><span class="spin">◌</span> 加载中…</td></tr>
+          </tbody>
+        </table>
+        <div class="row" style="margin-top:12px">
+          <input type="text" id="etf-name" placeholder="名称" style="width:120px">
+          <input type="text" id="etf-code" placeholder="代码（如510300）" style="width:140px">
+          <button class="btn small" onclick="addEtfItem()">+ 加自选</button>
+        </div>
+        <p class="muted" style="margin-top:10px">策略：基础定投每只10-20元；跌&gt;1%加100元，跌0.3-1%加50元。可在下方按钮生成建议，复制后发到微信或与家人共享。</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>每日加仓建议（最近记录）
+        <button class="btn small" style="margin-left:auto" onclick="genEtfAdvice()">生成今日建议</button>
+      </h3>
+      <div class="body" id="etf-list"></div>
+    </div>
+  </section>
+
+  <!-- 记账本 -->
+  <section class="panel" id="panel-book">
+    <div class="card">
+      <h3>本月概览</h3>
+      <div class="body">
+        <div class="book-summary">
+          <div class="cell"><div class="k">收入</div><div class="v" style="color:var(--green)" id="bk-in">0.00</div></div>
+          <div class="cell"><div class="k">支出</div><div class="v" style="color:var(--red)" id="bk-out">0.00</div></div>
+          <div class="cell"><div class="k">结余</div><div class="v" id="bk-net">0.00</div></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <span class="muted">累计总结余：</span><span id="bk-total" style="font-weight:600; font-variant-numeric:tabular-nums">0.00</span><span class="muted">元</span>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>记一笔</h3>
+      <div class="body">
+        <div class="row">
+          <select id="bk-type">
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+          </select>
+          <select id="bk-cat">
+            <option>副业</option><option>餐饮</option><option>购物</option><option>居住</option>
+            <option>交通</option><option>教育</option><option>医疗</option><option>娱乐</option><option>其他</option>
+          </select>
+          <input type="number" id="bk-amount" placeholder="金额" style="width:110px" step="0.01">
+          <input type="date" id="bk-date">
+          <input type="text" id="bk-note" placeholder="备注（可选）" style="flex:1; min-width:140px">
+          <button class="btn" onclick="addBook()">记录</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>收支流水 <span class="muted" id="bk-count"></span></h3>
+      <div class="body">
+        <div class="row" style="margin-bottom:10px">
+          <select id="bk-filter" onchange="loadBook()">
+            <option value="month">本月</option>
+            <option value="all">全部</option>
+          </select>
+        </div>
+        <table>
+          <thead><tr><th>日期</th><th>类型</th><th>分类</th><th>金额</th><th>备注</th><th></th></tr></thead>
+          <tbody id="book-list"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 小孩教育 -->
+  <section class="panel" id="panel-edu">
+    <div class="card">
+      <h3>识字闯关进度</h3>
+      <div class="body">
+        <div class="progress-row">
+          <span class="progress-label">关卡进度</span>
+          <div class="progress-outer"><div class="progress-inner" id="pg-level" style="background:linear-gradient(90deg,#ec4899,#f43f5e); width:0%"></div></div>
+          <span class="progress-val" id="pg-level-val">0/50关</span>
+        </div>
+        <div class="progress-row">
+          <span class="progress-label">识字量</span>
+          <div class="progress-outer"><div class="progress-inner" id="pg-char" style="background:linear-gradient(90deg,#8b5cf6,#ec4899); width:0%"></div></div>
+          <span class="progress-val" id="pg-char-val">0/1000字</span>
+        </div>
+        <div class="row">
+          <span class="muted">更新进度：</span>
+          <input type="number" id="edu-level" placeholder="关卡" style="width:90px" min="0" max="50">
+          <input type="number" id="edu-chars" placeholder="识字数" style="width:100px" min="0">
+          <button class="btn small" onclick="saveEduProgress()">保存进度</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>学习 / 锻炼打卡</h3>
+      <div class="body">
+        <div class="row" style="margin-bottom:12px">
+          <select id="edu-kind">
+            <option value="study">📖 学习</option>
+            <option value="exercise">🏃 锻炼</option>
+          </select>
+          <input type="date" id="edu-date">
+          <input type="number" id="edu-minutes" placeholder="时长(分钟)" style="width:110px">
+          <input type="text" id="edu-content" placeholder="内容（如：第12关新字20个 / 跳绳200个）" style="flex:1; min-width:200px">
+          <button class="btn" onclick="addEdu()">打卡</button>
+        </div>
+        <div class="row" style="margin-bottom:6px">
+          <span class="muted" id="edu-week-stat"></span>
+        </div>
+        <div id="edu-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 快捷入口 -->
+  <section class="panel" id="panel-link">
+    <div class="card">
+      <h3>💬 微信快捷录入</h3>
+      <div class="body">
+        <p class="muted" style="margin-bottom:10px">生成一个分享链接 / 二维码，在微信里发给自己或「文件传输助手」，手机打开后即录入到本工作台（待办 / 记账 / 打卡）。</p>
+        <div class="row" style="margin-bottom:10px">
+          <select id="wx-type" onchange="renderWxFields()">
+            <option value="todo">📋 待办</option>
+            <option value="book">💰 记账</option>
+            <option value="edu">👧 打卡</option>
+          </select>
+        </div>
+        <div id="wx-fields"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn small" onclick="genWxLink()">生成分享链接 + 二维码</button>
+        </div>
+        <div id="wx-result" class="wx-result-box" style="display:none">
+          <div class="row" style="margin-bottom:10px">
+            <input type="text" id="wx-link" readonly style="flex:1; min-width:200px">
+            <button class="btn ghost small" onclick="copyWxLink()">复制</button>
+          </div>
+          <div style="text-align:center">
+            <img id="wx-qr" class="wx-qr" alt="二维码">
+          </div>
+          <p class="muted" style="margin-top:10px; text-align:center">提示：数据保存在「打开链接时所在的浏览器」中。<br>若常用手机微信打开，建议在手机浏览器把这个页面「添加到主屏幕」作为常用工作台；跨设备迁移请用上方「导出备份 / 导入备份」。</p>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>常用入口</h3>
+      <div class="body">
+        <div class="links">
+          <a class="link-card" href="http://121.40.135.27:81" target="_blank"><div class="t">建设工程检测平台</div><div class="d">委托台账 / 报告管理</div></a>
+          <a class="link-card" href="https://jzsc.mohurd.gov.cn" target="_blank"><div class="t">四库一平台</div><div class="d">注册人员 / 企业资质查询</div></a>
+          <a class="link-card" href="https://www.landchina.com" target="_blank"><div class="t">中国土地市场网</div><div class="d">土地出让信息（每日自动汇总）</div></a>
+          <a class="link-card" href="https://quote.eastmoney.com" target="_blank"><div class="t">东方财富行情</div><div class="d">A股 / ETF 实时行情</div></a>
+          <a class="link-card" href="https://xueqiu.com" target="_blank"><div class="t">雪球</div><div class="d">个股研报与讨论</div></a>
+          <a class="link-card" href="https://www.csindex.com.cn" target="_blank"><div class="t">中证指数</div><div class="d">指数估值参考</div></a>
+          <a class="link-card" href="https://www.zhihuishan.com" target="_blank"><div class="t">智慧山</div><div class="d">学前识字练习资源</div></a>
+          <a class="link-card" href="https://www.gushiwen.cn" target="_blank"><div class="t">古诗文网</div><div class="d">小学古诗原文与朗读</div></a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+$('#today').textContent = new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+$('#bk-date').value = new Date().toISOString().slice(0,10);
+$('#edu-date').value = new Date().toISOString().slice(0,10);
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+function esc(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function todayISO() { return new Date().toISOString().slice(0,10); }
+
+/* =========================================================
+   本地数据存储层（替代原 /api 后端，无需服务器）
+   数据保存在浏览器 localStorage，不上传任何服务器。
+   ========================================================= */
+const DBK = 'workbench_db_v1';
+function _db() { try { return JSON.parse(localStorage.getItem(DBK)) || {}; } catch { return {}; } }
+function _save(db) { localStorage.setItem(DBK, JSON.stringify(db)); }
+function _col(db, name, init) { if (!db[name]) db[name] = init; return db[name]; }
+function _uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+const _delay = (ms=0) => new Promise(r => setTimeout(r, ms));
+
+async function api(path, opts = {}) {
+  const cloud = cloudCfg();
+  if (cloud) return cloudApi(path, opts, cloud);
+  await _delay();
+  const method = (opts.method || 'GET').toUpperCase();
+  const db = _db();
+  const segs = path.split('?');
+  const base = segs[0].split('/').filter(Boolean);
+  const query = segs[1] ? new URLSearchParams(segs[1]) : null;
+  const resource = base[0];
+  const id = base[1] ? decodeURIComponent(base[1]) : null;
+  const body = opts.body || {};
+
+  if (method === 'GET') {
+    if (resource === 'todos') {
+      const list = _col(db, 'todos', []);
+      const status = query?.get('status') || 'all';
+      const rows = status === 'all' ? list : list.filter(r => r.status === status);
+      return rows.slice().sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    }
+    if (resource === 'watchlist') {
+      const type = query?.get('type') || 'stock';
+      return _col(db, 'watchlist', []).filter(r => r.list_type === type);
+    }
+    if (resource === 'books') return _col(db, 'books', []);
+    if (resource === 'edu') return _col(db, 'edu', []);
+    if (resource === 'edu-progress') return _col(db, 'eduProgress', { id: 1, level: 0, chars: 0 });
+    if (resource === 'etf-advice') return _col(db, 'etfAdvice', []);
+    if (resource === 'export') return { todos: _col(db, 'todos', []), books: _col(db, 'books', []), edu: _col(db, 'edu', []), exported_at: new Date().toISOString() };
+    if (resource === 'health') return { ok: true, db: false };
+    throw new Error('接口不存在');
+  }
+
+  if (method === 'POST') {
+    if (resource === 'todos') {
+      if (!body.title || !String(body.title).trim()) throw new Error('标题不能为空');
+      const row = { id: _uid(), title: String(body.title).trim().slice(0,500), due_date: body.due_date || null, priority: ['low','normal','high'].includes(body.priority) ? body.priority : 'normal', status: 'open', created_at: new Date().toISOString() };
+      _col(db, 'todos', []).push(row); _save(db); return row;
+    }
+    if (resource === 'watchlist') {
+      if (!/^\d{6}$/.test(String(body.code || ''))) throw new Error('代码须为6位数字');
+      const code = String(body.code); const c = code[0];
+      const market = Number.isInteger(body.market) ? body.market : ((c === '6' || c === '9' || c === '5') ? 1 : 0);
+      const type = body.list_type === 'etf' ? 'etf' : 'stock';
+      if (_col(db, 'watchlist', []).find(r => r.list_type === type && r.code === code)) throw new Error('该代码已在自选中');
+      const row = { id: _uid(), list_type: type, code, market, name: String(body.name || code).slice(0,30), cost: (parseFloat(body.cost) > 0) ? parseFloat(body.cost) : null, note: body.note ? String(body.note).slice(0,50) : '' };
+      _col(db, 'watchlist', []).push(row); _save(db); return row;
+    }
+    if (resource === 'books') {
+      const amount = parseFloat(body.amount);
+      if (isNaN(amount) || amount <= 0) throw new Error('金额无效');
+      const row = { id: _uid(), type: body.type === 'income' ? 'income' : 'expense', category: String(body.category || '其他').slice(0,20), amount, note: body.note ? String(body.note).slice(0,300) : '', date: body.date || todayISO(), created_at: new Date().toISOString() };
+      _col(db, 'books', []).push(row); _save(db); return row;
+    }
+    if (resource === 'edu') {
+      if (!body.content || !String(body.content).trim()) throw new Error('内容不能为空');
+      const row = { id: _uid(), kind: body.kind === 'exercise' ? 'exercise' : 'study', content: String(body.content).trim().slice(0,500), minutes: Number.isInteger(body.minutes) ? body.minutes : (parseInt(body.minutes) || null), date: body.date || todayISO(), created_at: new Date().toISOString() };
+      _col(db, 'edu', []).push(row); _save(db); return row;
+    }
+    if (resource === 'etf-advice') {
+      if (!body.content || !String(body.content).trim()) throw new Error('内容不能为空');
+      const row = { id: _uid(), content: String(body.content).slice(0,10000), advice_date: body.advice_date || todayISO() };
+      _col(db, 'etfAdvice', []).push(row); _save(db); return row;
+    }
+    if (resource === 'quick') {
+      const keys = _col(db, 'usedKeys', []);
+      if (body.k) { if (keys.includes(body.k)) return { duplicate: true }; keys.push(body.k); }
+      if (body.todo) {
+        const row = { id: _uid(), title: String(body.todo).slice(0,500), due_date: body.date || null, priority: ['high','normal','low'].includes(body.pri) ? body.pri : 'normal', status: 'open', created_at: new Date().toISOString() };
+        _col(db, 'todos', []).push(row); _save(db); return { type: 'todo', row };
+      }
+      if (body.book) {
+        const amount = parseFloat(body.amount);
+        if (isNaN(amount) || amount <= 0) throw new Error('金额无效');
+        const row = { id: _uid(), type: body.book === 'in' ? 'income' : 'expense', category: String(body.cat || '其他').slice(0,20), amount, note: body.note ? String(body.note).slice(0,300) : '', date: body.date || todayISO(), created_at: new Date().toISOString() };
+        _col(db, 'books', []).push(row); _save(db); return { type: 'book', row };
+      }
+      if (body.edu) {
+        if (!body.content) throw new Error('内容不能为空');
+        const row = { id: _uid(), kind: body.edu === 'exercise' ? 'exercise' : 'study', content: String(body.content).slice(0,500), minutes: parseInt(body.minutes) || null, date: body.date || todayISO(), created_at: new Date().toISOString() };
+        _col(db, 'edu', []).push(row); _save(db); return { type: 'edu', row };
+      }
+      throw new Error('缺少录入内容');
+    }
+    if (resource === 'import') {
+      let count = 0;
+      const todos = _col(db, 'todos', []), books = _col(db, 'books', []), edu = _col(db, 'edu', []);
+      if (Array.isArray(body.todos)) body.todos.filter(r => r.title).forEach(r => { todos.push({ id: _uid(), title: String(r.title).slice(0,500), due_date: r.due_date || null, priority: ['low','normal','high'].includes(r.priority) ? r.priority : 'normal', status: r.status === 'done' ? 'done' : 'open', created_at: new Date().toISOString() }); count++; });
+      if (Array.isArray(body.books)) body.books.filter(r => r.amount > 0).forEach(r => { books.push({ id: _uid(), type: r.type === 'income' ? 'income' : 'expense', category: String(r.category || '其他').slice(0,20), amount: parseFloat(r.amount), note: r.note ? String(r.note).slice(0,300) : '', date: r.date || todayISO(), created_at: new Date().toISOString() }); count++; });
+      if (Array.isArray(body.edu)) body.edu.filter(r => r.content).forEach(r => { edu.push({ id: _uid(), kind: r.kind === 'exercise' ? 'exercise' : 'study', content: String(r.content).slice(0,500), minutes: parseInt(r.minutes) || null, date: r.date || todayISO(), created_at: new Date().toISOString() }); count++; });
+      _save(db); return { imported: count };
+    }
+  }
+
+  if (method === 'PATCH') {
+    if (resource === 'todos' && id) {
+      const list = _col(db, 'todos', []); const row = list.find(r => r.id === id);
+      if (row) { if (body.status) { row.status = body.status; row.done_at = body.status === 'done' ? new Date().toISOString() : null; } if (body.title) row.title = String(body.title).trim().slice(0,500); _save(db); }
+      return row || { ok: true };
+    }
+  }
+  if (method === 'PUT') {
+    if (resource === 'edu-progress') {
+      const lv = Math.max(0, Math.min(50, parseInt(body.level) || 0));
+      const ch = Math.max(0, parseInt(body.chars) || 0);
+      const p = _col(db, 'eduProgress', { id: 1, level: 0, chars: 0 }); p.level = lv; p.chars = ch; _save(db); return p;
+    }
+  }
+  if (method === 'DELETE') {
+    if (resource === 'todos' && id) { const l = _col(db, 'todos', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
+    if (resource === 'watchlist' && id) { const l = _col(db, 'watchlist', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
+    if (resource === 'books' && id) { const l = _col(db, 'books', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
+    if (resource === 'edu' && id) { const l = _col(db, 'edu', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
+  }
+  throw new Error('接口不存在');
+}
+
+// ---------- 设置（个性化 + 微信云端同步） ----------
+function loadSettings() { return _db().settings || { owner: '', title: '', sbUrl: '', sbKey: '', pass: '' }; }
+function saveSettings() {
+  const db = _db();
+  db.settings = {
+    owner: $('#set-owner').value.trim(),
+    title: $('#set-title').value.trim(),
+    sbUrl: $('#set-sburl').value.trim(),
+    sbKey: $('#set-sbkey').value.trim(),
+    pass: $('#set-pass').value.trim()
+  };
+  _save(db); applySettings(); toast('设置已保存'); toggleSettings(true);
+}
+function applySettings() {
+  const s = loadSettings();
+  const owner = s.owner || '我的'; const title = s.title || '专属工作台';
+  $('#wb-title').innerHTML = `${esc(owner)}的<span class="dot">${esc(title)}</span>`;
+  document.title = `${owner}的${title}`;
+  const badge = $('#store-badge');
+  if (s.sbUrl && s.sbKey && s.pass) { badge.textContent = '☁ 云端同步'; badge.style.color = 'var(--green)'; badge.style.background = '#ecfdf3'; }
+  else { badge.textContent = '💾 本地存储'; badge.style.color = ''; badge.style.background = ''; }
+}
+function toggleSettings(forceHide) {
+  const p = $('#settings-panel');
+  const hide = forceHide !== undefined ? forceHide : (p.style.display !== 'none');
+  p.style.display = hide ? 'none' : 'block';
+  if (!hide) { const s = loadSettings(); $('#set-owner').value = s.owner || ''; $('#set-title').value = s.title || ''; $('#set-sburl').value = s.sbUrl || ''; $('#set-sbkey').value = s.sbKey || ''; $('#set-pass').value = s.pass || ''; }
+}
+async function testCloud() {
+  const url = $('#set-sburl').value.trim().replace(/\/$/, ''); const key = $('#set-sbkey').value.trim(); const pass = $('#set-pass').value.trim();
+  const st = $('#cloud-status');
+  if (!url || !key || !pass) { st.textContent = '请先填写 URL、Anon Key 与同步口令'; return; }
+  st.textContent = '测试中…';
+  try {
+    const r = await fetch(`${url}/rest/v1/todos?select=id&owner=eq.${encodeURIComponent(pass)}&limit=1`, { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    st.textContent = '✅ 连接成功（请点「保存设置」启用云端同步）';
+  } catch (e) { st.textContent = '❌ 连接失败：' + e.message + '（请确认 URL/Key 正确且数据表已按 README 创建）'; }
+}
+function cloudCfg() {
+  const s = loadSettings();
+  if (s.sbUrl && s.sbKey && s.pass) return { url: s.sbUrl.replace(/\/$/, ''), key: s.sbKey, pass: s.pass };
+  return null;
+}
+function _uuid() { return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : _uid(); }
+async function sbReq(cloud, method, table, { body, query, single } = {}) {
+  const url = `${cloud.url}/rest/v1/${table}${query ? ('?' + query) : ''}`;
+  const headers = { 'apikey': cloud.key, 'Authorization': `Bearer ${cloud.key}`, 'Content-Type': 'application/json' };
+  if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
+  const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error('云端请求失败(' + res.status + '): ' + t.slice(0, 200)); }
+  if (method === 'DELETE') return null;
+  const data = await res.json();
+  return single ? data[0] : data;
+}
+async function cloudApi(path, opts, cloud) {
+  const method = (opts.method || 'GET').toUpperCase();
+  const segs = path.split('?');
+  const base = segs[0].split('/').filter(Boolean);
+  const query = segs[1] ? new URLSearchParams(segs[1]) : null;
+  const resource = base[0];
+  const id = base[1] ? decodeURIComponent(base[1]) : null;
+  const body = opts.body || {};
+  const O = `owner=eq.${encodeURIComponent(cloud.pass)}`;
+
+  if (method === 'GET') {
+    if (resource === 'todos') { const q = query?.get('status') || 'all'; const bq = `select=*&order=created_at.desc&${O}`; return sbReq(cloud, 'GET', 'todos', { query: q === 'all' ? bq : `${bq}&status=eq.${q}` }); }
+    if (resource === 'watchlist') { const type = query?.get('type') || 'stock'; return sbReq(cloud, 'GET', 'watchlist', { query: `select=*&list_type=eq.${type}&order=id.asc&${O}` }); }
+    if (resource === 'books') return sbReq(cloud, 'GET', 'books', { query: `select=*&order=date.desc,created_at.desc&limit=500&${O}` });
+    if (resource === 'edu') return sbReq(cloud, 'GET', 'edu_records', { query: `select=*&order=date.desc,created_at.desc&limit=200&${O}` });
+    if (resource === 'edu-progress') { const row = await sbReq(cloud, 'GET', 'edu_progress', { query: `select=*&id=eq.1&${O}`, single: true }); return row || { id: 1, level: 0, chars: 0 }; }
+    if (resource === 'etf-advice') return sbReq(cloud, 'GET', 'etf_advice', { query: `select=*&order=advice_date.desc&limit=30&${O}` });
+    if (resource === 'export') { const [todos, books, edu] = await Promise.all([sbReq(cloud, 'GET', 'todos', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'books', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'edu_records', { query: `select=*&${O}` })]); return { todos, books, edu, exported_at: new Date().toISOString() }; }
+    if (resource === 'health') return { ok: true, db: true };
+    throw new Error('接口不存在');
+  }
+  if (method === 'POST') {
+    if (resource === 'todos') { if (!body.title || !String(body.title).trim()) throw new Error('标题不能为空'); return sbReq(cloud, 'POST', 'todos', { body: { id: _uuid(), title: String(body.title).trim().slice(0, 500), due_date: body.due_date || null, priority: ['low', 'normal', 'high'].includes(body.priority) ? body.priority : 'normal', status: 'open', created_at: new Date().toISOString(), owner: cloud.pass }, single: true }); }
+    if (resource === 'watchlist') { if (!/^\d{6}$/.test(String(body.code || ''))) throw new Error('代码须为6位数字'); const code = String(body.code); const c = code[0]; const market = Number.isInteger(body.market) ? body.market : ((c === '6' || c === '9' || c === '5') ? 1 : 0); const type = body.list_type === 'etf' ? 'etf' : 'stock'; const ex = await sbReq(cloud, 'GET', 'watchlist', { query: `select=id&list_type=eq.${type}&code=eq.${code}&${O}` }); if (ex.length) throw new Error('该代码已在自选中'); return sbReq(cloud, 'POST', 'watchlist', { body: { id: _uuid(), list_type: type, code, market, name: String(body.name || code).slice(0, 30), cost: (parseFloat(body.cost) > 0) ? parseFloat(body.cost) : null, note: body.note ? String(body.note).slice(0, 50) : '', owner: cloud.pass }, single: true }); }
+    if (resource === 'books') { const amount = parseFloat(body.amount); if (isNaN(amount) || amount <= 0) throw new Error('金额无效'); return sbReq(cloud, 'POST', 'books', { body: { id: _uuid(), type: body.type === 'income' ? 'income' : 'expense', category: String(body.category || '其他').slice(0, 20), amount, note: body.note ? String(body.note).slice(0, 300) : '', date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }); }
+    if (resource === 'edu') { if (!body.content || !String(body.content).trim()) throw new Error('内容不能为空'); return sbReq(cloud, 'POST', 'edu_records', { body: { id: _uuid(), kind: body.kind === 'exercise' ? 'exercise' : 'study', content: String(body.content).trim().slice(0, 500), minutes: Number.isInteger(body.minutes) ? body.minutes : (parseInt(body.minutes) || null), date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }); }
+    if (resource === 'etf-advice') { if (!body.content || !String(body.content).trim()) throw new Error('内容不能为空'); return sbReq(cloud, 'POST', 'etf_advice', { body: { id: _uuid(), content: String(body.content).slice(0, 10000), advice_date: body.advice_date || todayISO(), owner: cloud.pass }, single: true }); }
+    if (resource === 'quick') {
+      if (body.k) { const keys = await sbReq(cloud, 'GET', 'used_keys', { query: `select=k&k=eq.${encodeURIComponent(body.k)}&${O}` }); if (keys.length) return { duplicate: true }; await sbReq(cloud, 'POST', 'used_keys', { body: { id: _uuid(), k: String(body.k).slice(0, 100), owner: cloud.pass } }); }
+      if (body.todo) return { type: 'todo', row: await sbReq(cloud, 'POST', 'todos', { body: { id: _uuid(), title: String(body.todo).slice(0, 500), due_date: body.date || null, priority: ['high', 'normal', 'low'].includes(body.pri) ? body.pri : 'normal', status: 'open', created_at: new Date().toISOString(), owner: cloud.pass }, single: true }) };
+      if (body.book) { const amount = parseFloat(body.amount); if (isNaN(amount) || amount <= 0) throw new Error('金额无效'); return { type: 'book', row: await sbReq(cloud, 'POST', 'books', { body: { id: _uuid(), type: body.book === 'in' ? 'income' : 'expense', category: String(body.cat || '其他').slice(0, 20), amount, note: body.note ? String(body.note).slice(0, 300) : '', date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }) }; }
+      if (body.edu) { if (!body.content) throw new Error('内容不能为空'); return { type: 'edu', row: await sbReq(cloud, 'POST', 'edu_records', { body: { id: _uuid(), kind: body.edu === 'exercise' ? 'exercise' : 'study', content: String(body.content).slice(0, 500), minutes: parseInt(body.minutes) || null, date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }) }; }
+      throw new Error('缺少录入内容');
+    }
+    if (resource === 'import') {
+      let count = 0;
+      if (Array.isArray(body.todos)) { const rows = body.todos.filter(r => r.title).map(r => ({ id: _uuid(), title: String(r.title).slice(0, 500), due_date: r.due_date || null, priority: ['low', 'normal', 'high'].includes(r.priority) ? r.priority : 'normal', status: r.status === 'done' ? 'done' : 'open', created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'todos', { body: rows }); count += rows.length; } }
+      if (Array.isArray(body.books)) { const rows = body.books.filter(r => r.amount > 0).map(r => ({ id: _uuid(), type: r.type === 'income' ? 'income' : 'expense', category: String(r.category || '其他').slice(0, 20), amount: parseFloat(r.amount), note: r.note ? String(r.note).slice(0, 300) : '', date: r.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'books', { body: rows }); count += rows.length; } }
+      if (Array.isArray(body.edu)) { const rows = body.edu.filter(r => r.content).map(r => ({ id: _uuid(), kind: r.kind === 'exercise' ? 'exercise' : 'study', content: String(r.content).slice(0, 500), minutes: parseInt(r.minutes) || null, date: r.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'edu_records', { body: rows }); count += rows.length; } }
+      return { imported: count };
+    }
+  }
+  if (method === 'PATCH') { if (resource === 'todos' && id) { const patch = {}; if (body.status) { patch.status = body.status; patch.done_at = body.status === 'done' ? new Date().toISOString() : null; } if (body.title) patch.title = String(body.title).trim().slice(0, 500); return sbReq(cloud, 'PATCH', 'todos', { body: patch, query: `id=eq.${id}&${O}`, single: true }); } }
+  if (method === 'PUT') { if (resource === 'edu-progress') { const lv = Math.max(0, Math.min(50, parseInt(body.level) || 0)); const ch = Math.max(0, parseInt(body.chars) || 0); return sbReq(cloud, 'PATCH', 'edu_progress', { body: { level: lv, chars: ch }, query: `id=eq.1&${O}`, single: true }); } }
+  if (method === 'DELETE') { if (resource === 'todos' && id) return sbReq(cloud, 'DELETE', 'todos', { query: `id=eq.${id}&${O}` }); if (resource === 'watchlist' && id) return sbReq(cloud, 'DELETE', 'watchlist', { query: `id=eq.${id}&${O}` }); if (resource === 'books' && id) return sbReq(cloud, 'DELETE', 'books', { query: `id=eq.${id}&${O}` }); if (resource === 'edu' && id) return sbReq(cloud, 'DELETE', 'edu_records', { query: `id=eq.${id}&${O}` }); }
+  throw new Error('接口不存在');
+}
+
+// ---------- 微信快捷录入 ----------
+function renderWxFields() {
+  const type = $('#wx-type').value;
+  const box = $('#wx-fields');
+  const today = todayISO();
+  if (type === 'todo') {
+    box.innerHTML = `<div class="row">
+      <input type="text" id="wx-todo-title" placeholder="待办内容" style="flex:1;min-width:200px">
+      <input type="date" id="wx-todo-date" value="${today}">
+      <select id="wx-todo-pri"><option value="normal">普通</option><option value="high">重要</option><option value="low">较低</option></select>
+    </div>`;
+  } else if (type === 'book') {
+    box.innerHTML = `<div class="row">
+      <select id="wx-book-in"><option value="out">支出</option><option value="in">收入</option></select>
+      <select id="wx-book-cat"><option>副业</option><option>餐饮</option><option>购物</option><option>居住</option><option>交通</option><option>教育</option><option>医疗</option><option>娱乐</option><option>其他</option></select>
+      <input type="number" id="wx-book-amt" placeholder="金额" style="width:110px" step="0.01">
+      <input type="text" id="wx-book-note" placeholder="备注" style="flex:1;min-width:120px">
+      <input type="date" id="wx-book-date" value="${today}">
+    </div>`;
+  } else {
+    box.innerHTML = `<div class="row">
+      <select id="wx-edu-kind"><option value="study">学习</option><option value="exercise">锻炼</option></select>
+      <input type="text" id="wx-edu-content" placeholder="内容（如：第12关新字20个）" style="flex:1;min-width:200px">
+      <input type="number" id="wx-edu-min" placeholder="分钟" style="width:90px">
+      <input type="date" id="wx-edu-date" value="${today}">
+    </div>`;
+  }
+}
+function genWxLink() {
+  const type = $('#wx-type').value;
+  const k = Math.random().toString(36).slice(2, 10);
+  const params = new URLSearchParams();
+  params.set('k', k);
+  if (type === 'todo') {
+    const title = $('#wx-todo-title').value.trim(); if (!title) return toast('请输入待办内容');
+    params.set('todo', title);
+    const d = $('#wx-todo-date').value; if (d) params.set('date', d);
+    params.set('pri', $('#wx-todo-pri').value);
+  } else if (type === 'book') {
+    const amt = parseFloat($('#wx-book-amt').value); if (isNaN(amt) || amt <= 0) return toast('请输入金额');
+    params.set('book', $('#wx-book-in').value === 'in' ? 'in' : 'out');
+    params.set('amount', amt);
+    params.set('cat', $('#wx-book-cat').value);
+    const note = $('#wx-book-note').value.trim(); if (note) params.set('note', note);
+    const d = $('#wx-book-date').value; if (d) params.set('date', d);
+  } else {
+    const content = $('#wx-edu-content').value.trim(); if (!content) return toast('请输入内容');
+    params.set('edu', $('#wx-edu-kind').value === 'exercise' ? 'exercise' : 'study');
+    params.set('content', content);
+    const m = parseInt($('#wx-edu-min').value); if (m) params.set('minutes', m);
+    const d = $('#wx-edu-date').value; if (d) params.set('date', d);
+  }
+  const link = location.origin + location.pathname + '#' + params.toString();
+  $('#wx-link').value = link;
+  $('#wx-qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=' + encodeURIComponent(link);
+  $('#wx-result').style.display = 'block';
+  toast('已生成，可分享到微信');
+}
+function copyWxLink() { const i = $('#wx-link'); i.select(); document.execCommand('copy'); toast('链接已复制'); }
+
+// ---------- ETF 加仓建议（本地生成 + 复制到微信分享） ----------
+async function genEtfAdvice() {
+  if (!etfs.length) return toast('请先在上方添加 ETF 自选');
+  const diff = await fetchQuotes(etfs);
+  const date = todayISO();
+  const lines = [`📊 ETF定投 · 今日加仓建议（${date}）`, '基础定投：每只10-20元'];
+  etfs.forEach(s => {
+    const q = diff[s.code];
+    if (!q || typeof q.pct !== 'number') { lines.push(`- ${s.name}(${s.code})：行情获取失败`); return; }
+    const act = q.pct < -1 ? '加仓100元' : (q.pct < -0.3 ? '加仓50元' : '仅基础定投');
+    lines.push(`- ${s.name}(${s.code})：现价${Number(q.price).toFixed(3)}，涨跌幅${q.pct > 0 ? '+' : ''}${q.pct}% → ${act}`);
+  });
+  const content = lines.join('\n');
+  try {
+    await api('etf-advice', { method: 'POST', body: { content, advice_date: date } });
+    loadEtfAdvice();
+    // 复制到剪贴板，方便发到微信 / 与家人共享
+    await navigator.clipboard.writeText(content).catch(() => {});
+    toast('已生成建议并复制到剪贴板，可粘贴到微信');
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- Tab 切换 ----------
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    $('#panel-' + btn.dataset.panel).classList.add('active');
+    if (btn.dataset.panel === 'invest') loadQuotes();
+  };
+});
+
+// ---------- 待办 ----------
+const PRI = { high: '重要', normal: '普通', low: '较低' };
+let allTodos = [];
+async function loadTodos() {
+  try {
+    allTodos = await api('todos');
+    refreshStats();
+  } catch (e) { $('#todo-list').innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`; return; }
+  const filter = $('#todo-filter').value;
+  const rows = allTodos.slice().sort((a,b) =>
+    (a.status === 'done') - (b.status === 'done') ||
+    ({high:0,normal:1,low:2}[a.priority] ?? 1) - ({high:0,normal:1,low:2}[b.priority] ?? 1) ||
+    (b.created_at || '').localeCompare(a.created_at || ''));
+  const shown = filter === 'all' ? rows : rows.filter(r => r.status === filter);
+  const ul = $('#todo-list');
+  ul.innerHTML = shown.length ? '' : '<div class="empty">暂无待办，添加一条吧</div>';
+  const today = todayISO();
+  shown.forEach(r => {
+    const li = document.createElement('li');
+    if (r.status === 'done') li.classList.add('done');
+    let dateTag = '';
+    if (r.due_date) {
+      const overdue = r.status !== 'done' && r.due_date < today;
+      dateTag = `<span class="tag ${overdue ? 'overdue' : 'date'}">${overdue ? '已逾期 ' : ''}${r.due_date}</span>`;
+    }
+    li.innerHTML = `
+      <input type="checkbox" class="checkbox" ${r.status === 'done' ? 'checked' : ''} onchange="toggleTodo('${r.id}','${r.status === 'done' ? 'open' : 'done'}')">
+      <span class="todo-title">${esc(r.title)}</span>
+      ${dateTag}
+      <span class="tag ${r.priority}">${PRI[r.priority] || '普通'}</span>
+      <button class="btn ghost" onclick="delTodo('${r.id}')">删除</button>`;
+    ul.appendChild(li);
+  });
+  $('#todo-count').textContent = `（未完成 ${rows.filter(r => r.status !== 'done').length} 项）`;
+}
+async function addTodo() {
+  const title = $('#todo-title').value.trim();
+  if (!title) return toast('请输入待办内容');
+  try {
+    await api('todos', { method: 'POST', body: { title, due_date: $('#todo-date').value || null, priority: $('#todo-pri').value } });
+    $('#todo-title').value = ''; $('#todo-date').value = '';
+    toast('已添加'); loadTodos();
+  } catch (e) { toast(e.message); }
+}
+async function toggleTodo(id, status) {
+  try { await api('todos/' + id, { method: 'PATCH', body: { status } }); loadTodos(); }
+  catch (e) { toast(e.message); }
+}
+async function delTodo(id) {
+  try { await api('todos/' + id, { method: 'DELETE' }); loadTodos(); toast('已删除'); }
+  catch (e) { toast(e.message); }
+}
+
+// ---------- 自选行情 ----------
+let stocks = [], etfs = [];
+async function loadWatchlist() {
+  try {
+    [stocks, etfs] = await Promise.all([api('watchlist?type=stock'), api('watchlist?type=etf')]);
+    await loadQuotes();
+  } catch (e) {
+    $('#stock-list').innerHTML = `<tr><td colspan="8" class="empty">自选加载失败：${esc(e.message)}</td></tr>`;
+    $('#etf-quote-list').innerHTML = `<tr><td colspan="5" class="empty">自选加载失败</td></tr>`;
+  }
+}
+async function fetchQuotes(list) {
+  if (!list.length) return {};
+  const secids = list.map(s => `${s.market}.${s.code}`).join(',');
+  const url = `https://push2.eastmoney.com/api/qt/ulist.np/get?secids=${secids}&fields=f2,f3,f12,f14&fltt=2&pn=1&pz=50&po=1&np=1`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('行情接口失败');
+  const data = await res.json();
+  const diff = {};
+  (data?.data?.diff || []).forEach(d => { diff[d.f12] = { price: d.f2, pct: d.f3, name: d.f14 }; });
+  return diff;
+}
+function pctHtml(pct) {
+  if (pct === '-' || pct === undefined || pct === null) return '<span class="muted">–</span>';
+  const cls = pct > 0 ? 'up' : (pct < 0 ? 'down' : '');
+  const sign = pct > 0 ? '+' : '';
+  return `<span class="${cls}">${sign}${pct}%</span>`;
+}
+async function loadQuotes(manual) {
+  try {
+    if (!stocks.length) $('#stock-list').innerHTML = '<tr><td colspan="8" class="empty">暂无自选，请在下方添加</td></tr>';
+    if (!etfs.length) $('#etf-quote-list').innerHTML = '<tr><td colspan="5" class="empty">暂无自选，请在下方添加</td></tr>';
+    const [stkDiff, etfDiff] = await Promise.all([fetchQuotes(stocks), fetchQuotes(etfs)]);
+    if (stocks.length) {
+      const tb = $('#stock-list');
+      tb.innerHTML = '';
+      stocks.forEach(s => {
+        const q = stkDiff[s.code];
+        const tr = document.createElement('tr');
+        let pnl = '–';
+        if (q && typeof q.price === 'number' && s.cost) {
+          const v = (q.price - s.cost) / s.cost * 100;
+          const cls = v >= 0 ? 'up' : 'down';
+          pnl = `<span class="${cls}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
+        }
+        tr.innerHTML = `<td>${esc(q?.name || s.name)}</td><td class="muted">${s.code}</td>
+          <td class="num-cell" style="font-weight:600">${q && typeof q.price === 'number' ? q.price.toFixed(2) : '–'}</td>
+          <td class="num-cell">${pctHtml(q?.pct)}</td>
+          <td class="num-cell muted">${s.cost ? Number(s.cost).toFixed(3) : '–'}</td>
+          <td class="num-cell">${pnl}</td>
+          <td class="muted">${esc(s.note || '')}</td>
+          <td><button class="btn ghost" onclick="delStock('${s.id}')">移除</button></td>`;
+        tb.appendChild(tr);
+      });
+    }
+    if (etfs.length) {
+      const eb = $('#etf-quote-list');
+      eb.innerHTML = '';
+      etfs.forEach(s => {
+        const q = etfDiff[s.code];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${esc(q?.name || s.name)}</td><td class="muted">${s.code}</td>
+          <td class="num-cell" style="font-weight:600">${q && typeof q.price === 'number' ? q.price.toFixed(3) : '–'}</td>
+          <td class="num-cell">${pctHtml(q?.pct)}</td>
+          <td><button class="btn ghost" onclick="delEtfItem('${s.id}')">移除</button></td>`;
+        eb.appendChild(tr);
+      });
+    }
+    const t = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    $('#quote-time').textContent = '更新于 ' + t;
+    $('#etf-quote-time').textContent = '更新于 ' + t;
+  } catch (e) {
+    const msg = '行情获取失败（可能是非交易时段或网络限制），点击"刷新"重试';
+    if (stocks.length) $('#stock-list').innerHTML = `<tr><td colspan="8" class="empty">${msg}</td></tr>`;
+    if (etfs.length) $('#etf-quote-list').innerHTML = `<tr><td colspan="5" class="empty">${msg}</td></tr>`;
+    if (manual) toast('行情获取失败');
+  }
+}
+async function addStock() {
+  const code = $('#stk-code').value.trim();
+  if (!/^\d{6}$/.test(code)) return toast('请输入6位代码');
+  try {
+    await api('watchlist', { method: 'POST', body: { list_type: 'stock', code, name: $('#stk-name').value.trim(), cost: parseFloat($('#stk-cost').value) || null, note: $('#stk-note').value.trim() } });
+    $('#stk-name').value = ''; $('#stk-code').value = ''; $('#stk-cost').value = ''; $('#stk-note').value = '';
+    toast('已添加自选'); loadWatchlist();
+  } catch (e) { toast(e.message); }
+}
+async function delStock(id) {
+  try { await api('watchlist/' + id, { method: 'DELETE' }); loadWatchlist(); toast('已移除'); }
+  catch (e) { toast(e.message); }
+}
+async function addEtfItem() {
+  const code = $('#etf-code').value.trim();
+  if (!/^\d{6}$/.test(code)) return toast('请输入6位代码');
+  try {
+    await api('watchlist', { method: 'POST', body: { list_type: 'etf', code, name: $('#etf-name').value.trim() } });
+    $('#etf-name').value = ''; $('#etf-code').value = '';
+    toast('已添加自选'); loadWatchlist();
+  } catch (e) { toast(e.message); }
+}
+async function delEtfItem(id) {
+  try { await api('watchlist/' + id, { method: 'DELETE' }); loadWatchlist(); toast('已移除'); }
+  catch (e) { toast(e.message); }
+}
+// 交易时段每60秒自动刷新
+setInterval(() => {
+  const h = new Date().getHours();
+  const m = new Date().getMinutes();
+  const morning = (h === 9 && m >= 30) || h === 10 || (h === 11 && m <= 30);
+  const afternoon = (h === 13) || (h === 14);
+  if (morning || afternoon) loadQuotes();
+}, 60000);
+
+// ---------- ETF 建议记录 ----------
+async function loadEtfAdvice() {
+  try {
+    const rows = await api('etf-advice');
+    const box = $('#etf-list');
+    box.innerHTML = rows.length ? '' : '<div class="empty">暂无记录</div>';
+    rows.slice(0, 14).forEach(r => {
+      const d = document.createElement('details');
+      d.className = 'etf-day';
+      d.innerHTML = `<summary>📅 ${esc(r.advice_date)}</summary><pre>${esc(r.content)}</pre>`;
+      box.appendChild(d);
+    });
+  } catch (e) { $('#etf-list').innerHTML = `<div class="empty">加载失败</div>`; }
+}
+
+// ---------- 记账本 ----------
+let allBooks = [];
+async function loadBook() {
+  try { allBooks = await api('books'); } catch (e) { $('#book-list').innerHTML = `<tr><td colspan="6" class="empty">加载失败：${esc(e.message)}</td></tr>`; return; }
+  const month = todayISO().slice(0,7);
+  const rows = $('#bk-filter').value === 'all' ? allBooks : allBooks.filter(r => (r.date||'').startsWith(month));
+  const tb = $('#book-list');
+  tb.innerHTML = rows.length ? '' : '<tr><td colspan="6" class="empty">暂无记录</td></tr>';
+  rows.slice(0, 200).forEach(r => {
+    const tr = document.createElement('tr');
+    const isIn = r.type === 'income';
+    tr.innerHTML = `<td>${esc(r.date)}</td>
+      <td><span class="tag ${isIn ? 'exercise' : 'high'}">${isIn ? '收入' : '支出'}</span></td>
+      <td>${esc(r.category)}</td>
+      <td class="num-cell" style="font-weight:600; color:${isIn ? 'var(--green)' : 'var(--red)'}">${isIn ? '+' : '-'}${Number(r.amount).toFixed(2)}</td>
+      <td class="muted">${esc(r.note || '')}</td>
+      <td><button class="btn ghost" onclick="delBook('${r.id}')">删除</button></td>`;
+    tb.appendChild(tr);
+  });
+  $('#bk-count').textContent = `（${rows.length} 笔）`;
+  const mRows = allBooks.filter(r => (r.date||'').startsWith(month));
+  const inM = mRows.filter(r => r.type === 'income').reduce((s,r) => s + Number(r.amount), 0);
+  const outM = mRows.filter(r => r.type === 'expense').reduce((s,r) => s + Number(r.amount), 0);
+  const net = inM - outM;
+  $('#bk-in').textContent = inM.toFixed(2);
+  $('#bk-out').textContent = outM.toFixed(2);
+  $('#bk-net').textContent = (net >= 0 ? '+' : '') + net.toFixed(2);
+  $('#bk-net').style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+  const totalNet = allBooks.reduce((s,r) => s + (r.type === 'income' ? 1 : -1) * Number(r.amount), 0);
+  $('#bk-total').textContent = (totalNet >= 0 ? '+' : '') + totalNet.toFixed(2);
+  $('#st-income').innerHTML = (net >= 0 ? '' : '-') + Math.abs(net).toFixed(2) + '<small>元</small>';
+  $('#st-income').classList.toggle('green', net >= 0);
+  $('#st-income').classList.toggle('red', net < 0);
+}
+async function addBook() {
+  const amount = parseFloat($('#bk-amount').value);
+  if (isNaN(amount) || amount <= 0) return toast('请填写金额');
+  try {
+    await api('books', { method: 'POST', body: { type: $('#bk-type').value, category: $('#bk-cat').value, amount, note: $('#bk-note').value.trim(), date: $('#bk-date').value || null } });
+    $('#bk-amount').value = ''; $('#bk-note').value = '';
+    toast('已记录'); loadBook();
+  } catch (e) { toast(e.message); }
+}
+async function delBook(id) {
+  try { await api('books/' + id, { method: 'DELETE' }); loadBook(); toast('已删除'); }
+  catch (e) { toast(e.message); }
+}
+
+// ---------- 小孩教育 ----------
+async function loadEdu() {
+  try {
+    const p = await api('edu-progress');
+    $('#pg-level').style.width = Math.min(100, p.level / 50 * 100) + '%';
+    $('#pg-level-val').textContent = `${p.level}/50关`;
+    $('#pg-char').style.width = Math.min(100, p.chars / 1000 * 100) + '%';
+    $('#pg-char-val').textContent = `${p.chars}/1000字`;
+    $('#st-edu').textContent = `${p.level}关 · ${p.chars}字`;
+  } catch (e) { /* 进度加载失败不阻塞 */ }
+  let rows = [];
+  try { rows = await api('edu'); } catch (e) {}
+  const box = $('#edu-list');
+  box.innerHTML = rows.length ? '' : '<div class="empty">暂无打卡记录</div>';
+  rows.slice(0, 50).forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'edu-item';
+    const kindTag = r.kind === 'exercise' ? '<span class="tag exercise">锻炼</span>' : '<span class="tag study">学习</span>';
+    d.innerHTML = `<div class="edu-date">${kindTag} ${esc(r.date)}${r.minutes ? ` · ${r.minutes}分钟` : ''} <button class="btn ghost" style="float:right" onclick="delEdu('${r.id}')">删除</button></div><div class="edu-content">${esc(r.content)}</div>`;
+    box.appendChild(d);
+  });
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const ws = weekStart.toISOString().slice(0,10);
+  const week = rows.filter(r => r.date >= ws);
+  const study = week.filter(r => r.kind !== 'exercise');
+  const exercise = week.filter(r => r.kind === 'exercise');
+  const studyMin = study.reduce((s, r) => s + Number(r.minutes || 0), 0);
+  const exMin = exercise.reduce((s, r) => s + Number(r.minutes || 0), 0);
+  $('#edu-week-stat').textContent = `本周：学习打卡 ${study.length} 次（${studyMin}分钟） · 锻炼打卡 ${exercise.length} 次（${exMin}分钟）`;
+}
+async function saveEduProgress() {
+  const p = { level: parseInt($('#edu-level').value), chars: parseInt($('#edu-chars').value) };
+  if (isNaN(p.level) && isNaN(p.chars)) return toast('请填写进度数值');
+  try {
+    await api('edu-progress', { method: 'PUT', body: p });
+    $('#edu-level').value = ''; $('#edu-chars').value = '';
+    toast('进度已更新'); loadEdu();
+  } catch (e) { toast(e.message); }
+}
+async function addEdu() {
+  const content = $('#edu-content').value.trim();
+  if (!content) return toast('请填写内容');
+  try {
+    await api('edu', { method: 'POST', body: { kind: $('#edu-kind').value, content, minutes: parseInt($('#edu-minutes').value) || null, date: $('#edu-date').value || null } });
+    $('#edu-content').value = ''; $('#edu-minutes').value = '';
+    toast('打卡成功'); loadEdu();
+  } catch (e) { toast(e.message); }
+}
+async function delEdu(id) {
+  try { await api('edu/' + id, { method: 'DELETE' }); loadEdu(); toast('已删除'); }
+  catch (e) { toast(e.message); }
+}
+
+// ---------- 统计 ----------
+function refreshStats() {
+  const open = allTodos.filter(r => r.status !== 'done');
+  const today = todayISO();
+  $('#st-todo').textContent = open.length;
+  $('#st-overdue').textContent = open.filter(r => r.due_date && r.due_date < today).length;
+}
+
+// ---------- 备份导出/导入 ----------
+async function exportData() {
+  try {
+    const data = await api('export');
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '工作台备份_' + todayISO() + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('已导出备份文件');
+  } catch (e) { toast(e.message); }
+}
+function importData() { $('#import-file').click(); }
+function doImport(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const payload = { todos: data.todos || [], books: data.books || [], edu: data.edu || [] };
+      if (!payload.todos.length && !payload.books.length && !payload.edu.length) return toast('备份文件中没有可导入的数据');
+      const r = await api('import', { method: 'POST', body: payload });
+      toast(`导入完成（${r.imported} 条）`);
+      loadTodos(); loadBook(); loadEdu();
+    } catch (e) { toast('导入失败：' + e.message); }
+  };
+  reader.readAsText(file);
+  ev.target.value = '';
+}
+
+// ---------- 链接快捷录入（微信/任意渠道分享链接） ----------
+async function processHash() {
+  if (!location.hash || location.hash.length < 2) return;
+  const params = new URLSearchParams(location.hash.slice(1));
+  history.replaceState(null, '', location.pathname);
+  const payload = { k: params.get('k') };
+  if (params.get('todo')) {
+    payload.todo = params.get('todo');
+    if (params.get('date')) payload.date = params.get('date');
+    if (params.get('pri')) payload.pri = params.get('pri');
+  } else if (params.get('book')) {
+    payload.book = params.get('book');
+    payload.amount = params.get('amount');
+    if (params.get('cat')) payload.cat = params.get('cat');
+    if (params.get('note')) payload.note = params.get('note');
+    if (params.get('date')) payload.date = params.get('date');
+  } else if (params.get('edu')) {
+    payload.edu = params.get('edu');
+    payload.content = params.get('content');
+    if (params.get('minutes')) payload.minutes = params.get('minutes');
+    if (params.get('date')) payload.date = params.get('date');
+  } else {
+    return;
+  }
+  try {
+    const r = await api('quick', { method: 'POST', body: payload });
+    if (r.duplicate) { toast('该链接已录入过，无需重复'); return; }
+    if (r.type === 'todo') { toast('已录入待办：' + payload.todo.slice(0, 24)); loadTodos(); }
+    if (r.type === 'book') { toast('已记账：' + Number(payload.amount).toFixed(2) + '元'); loadBook(); }
+    if (r.type === 'edu') { toast('已打卡：' + payload.content.slice(0, 24)); loadEdu(); }
+  } catch (e) { toast('录入失败：' + e.message); }
+}
+
+// 初始化
+applySettings();
+renderWxFields();
+loadTodos(); loadWatchlist(); loadEtfAdvice(); loadBook(); loadEdu(); processHash();
+</script>
+</body>
+</html>
