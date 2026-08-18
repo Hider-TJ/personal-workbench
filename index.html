@@ -115,6 +115,20 @@
   .wx-result-box { background: #fbfcfe; border: 1px dashed var(--border); border-radius: 12px; padding: 16px; margin-top: 12px; }
   .wx-qr { width: 180px; height: 180px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
 
+  .habit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .habit-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: #fbfcfe; display: flex; flex-direction: column; gap: 8px; }
+  .habit-top { display: flex; align-items: center; gap: 10px; }
+  .habit-emoji { font-size: 26px; line-height: 1; }
+  .habit-name { font-weight: 600; font-size: 15px; flex: 1; word-break: break-all; }
+  .habit-streak { font-size: 12px; color: var(--amber); }
+  .habit-check { border: none; border-radius: 8px; padding: 9px; font-size: 14px; cursor: pointer; width: 100%; }
+  .habit-check.on { background: var(--green); color: #fff; }
+  .habit-check.off { background: var(--primary-weak); color: var(--primary); }
+  .habit-calendar { display: flex; gap: 4px; }
+  .habit-cal-cell { width: 30px; text-align: center; font-size: 11px; padding: 5px 0; border-radius: 6px; background: #eef1f6; color: var(--muted); line-height: 1.2; }
+  .habit-cal-cell.done { background: var(--green); color: #fff; }
+  .habit-cal-cell.today { outline: 2px solid var(--primary); }
+
   @media (max-width:680px){
     .wrap{ padding:14px 12px 50px; }
     h1{ font-size:20px; }
@@ -167,6 +181,7 @@
     <div class="card stat amber"><div class="label">已逾期</div><div class="num" id="st-overdue">–</div></div>
     <div class="card stat green"><div class="label">本月结余</div><div class="num" id="st-income">–<small>元</small></div></div>
     <div class="card stat pink"><div class="label">识字进度</div><div class="num" id="st-edu" style="font-size:16px">–</div></div>
+    <div class="card stat green"><div class="label">今日习惯</div><div class="num" id="st-habit">–</div></div>
   </div>
 
   <div class="backup-bar">
@@ -180,6 +195,7 @@
     <button data-panel="invest">📈 投资跟踪</button>
     <button data-panel="book">💰 记账本</button>
     <button data-panel="edu">👧 小孩教育</button>
+    <button data-panel="habit">✅ 习惯打卡</button>
     <button data-panel="link">⚡ 快捷入口</button>
   </nav>
 
@@ -364,6 +380,38 @@
     </div>
   </section>
 
+  <!-- 习惯打卡 -->
+  <section class="panel" id="panel-habit">
+    <div class="card">
+      <h3>新增习惯</h3>
+      <div class="body">
+        <div class="row">
+          <input type="text" id="habit-emoji" placeholder="图标(可选，如🏃)" style="width:120px">
+          <input type="text" id="habit-name" placeholder="习惯名称（如：阅读30分钟 / 喝水 / 运动）" style="flex:1; min-width:220px">
+          <select id="habit-color">
+            <option value="#2563eb">蓝色</option>
+            <option value="#16a34a">绿色</option>
+            <option value="#db2777">粉色</option>
+            <option value="#d97706">橙色</option>
+            <option value="#7c3aed">紫色</option>
+            <option value="#0891b2">青色</option>
+          </select>
+          <button class="btn" onclick="addHabit()">添加</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>今日打卡 <span class="muted" id="habit-today-count"></span></h3>
+      <div class="body">
+        <div class="habit-grid" id="habit-list"><div class="empty">加载中…</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>打卡记录</h3>
+      <div class="body" id="habit-log-list"></div>
+    </div>
+  </section>
+
   <!-- 快捷入口 -->
   <section class="panel" id="panel-link">
     <div class="card">
@@ -375,6 +423,7 @@
             <option value="todo">📋 待办</option>
             <option value="book">💰 记账</option>
             <option value="edu">👧 打卡</option>
+            <option value="habit">✅ 习惯</option>
           </select>
         </div>
         <div id="wx-fields"></div>
@@ -465,8 +514,10 @@ async function api(path, opts = {}) {
     if (resource === 'books') return _col(db, 'books', []);
     if (resource === 'edu') return _col(db, 'edu', []);
     if (resource === 'edu-progress') return _col(db, 'eduProgress', { id: 1, level: 0, chars: 0 });
+    if (resource === 'habits') return _col(db, 'habits', []);
+    if (resource === 'habit-logs') return _col(db, 'habitLogs', []);
     if (resource === 'etf-advice') return _col(db, 'etfAdvice', []);
-    if (resource === 'export') return { todos: _col(db, 'todos', []), books: _col(db, 'books', []), edu: _col(db, 'edu', []), exported_at: new Date().toISOString() };
+    if (resource === 'export') return { todos: _col(db, 'todos', []), books: _col(db, 'books', []), edu: _col(db, 'edu', []), habits: _col(db, 'habits', []), habitLogs: _col(db, 'habitLogs', []), exported_at: new Date().toISOString() };
     if (resource === 'health') return { ok: true, db: false };
     throw new Error('接口不存在');
   }
@@ -502,6 +553,16 @@ async function api(path, opts = {}) {
       const row = { id: _uid(), content: String(body.content).slice(0,10000), advice_date: body.advice_date || todayISO() };
       _col(db, 'etfAdvice', []).push(row); _save(db); return row;
     }
+    if (resource === 'habits') {
+      if (!body.name || !String(body.name).trim()) throw new Error('习惯名称不能为空');
+      const row = { id: _uid(), name: String(body.name).trim().slice(0,40), emoji: (body.emoji || '🎯').slice(0,4), color: (body.color && /^#[0-9a-fA-F]{6}$/.test(body.color)) ? body.color : '#2563eb', created_at: new Date().toISOString() };
+      _col(db, 'habits', []).push(row); _save(db); return row;
+    }
+    if (resource === 'habit-logs') {
+      if (!body.habitId || !body.date) throw new Error('缺少参数');
+      const row = { id: _uid(), habitId: String(body.habitId), date: String(body.date), created_at: new Date().toISOString() };
+      _col(db, 'habitLogs', []).push(row); _save(db); return row;
+    }
     if (resource === 'quick') {
       const keys = _col(db, 'usedKeys', []);
       if (body.k) { if (keys.includes(body.k)) return { duplicate: true }; keys.push(body.k); }
@@ -520,14 +581,21 @@ async function api(path, opts = {}) {
         const row = { id: _uid(), kind: body.edu === 'exercise' ? 'exercise' : 'study', content: String(body.content).slice(0,500), minutes: parseInt(body.minutes) || null, date: body.date || todayISO(), created_at: new Date().toISOString() };
         _col(db, 'edu', []).push(row); _save(db); return { type: 'edu', row };
       }
+      if (body.habit) {
+        if (!body.habit) throw new Error('习惯名称不能为空');
+        const row = { id: _uid(), name: String(body.habit).slice(0,40), emoji: (body.emoji || '🎯').slice(0,4), color: '#2563eb', created_at: new Date().toISOString() };
+        _col(db, 'habits', []).push(row); _save(db); return { type: 'habit', row };
+      }
       throw new Error('缺少录入内容');
     }
     if (resource === 'import') {
       let count = 0;
-      const todos = _col(db, 'todos', []), books = _col(db, 'books', []), edu = _col(db, 'edu', []);
+      const todos = _col(db, 'todos', []), books = _col(db, 'books', []), edu = _col(db, 'edu', []), habits = _col(db, 'habits', []), habitLogs = _col(db, 'habitLogs', []);
       if (Array.isArray(body.todos)) body.todos.filter(r => r.title).forEach(r => { todos.push({ id: _uid(), title: String(r.title).slice(0,500), due_date: r.due_date || null, priority: ['low','normal','high'].includes(r.priority) ? r.priority : 'normal', status: r.status === 'done' ? 'done' : 'open', created_at: new Date().toISOString() }); count++; });
       if (Array.isArray(body.books)) body.books.filter(r => r.amount > 0).forEach(r => { books.push({ id: _uid(), type: r.type === 'income' ? 'income' : 'expense', category: String(r.category || '其他').slice(0,20), amount: parseFloat(r.amount), note: r.note ? String(r.note).slice(0,300) : '', date: r.date || todayISO(), created_at: new Date().toISOString() }); count++; });
       if (Array.isArray(body.edu)) body.edu.filter(r => r.content).forEach(r => { edu.push({ id: _uid(), kind: r.kind === 'exercise' ? 'exercise' : 'study', content: String(r.content).slice(0,500), minutes: parseInt(r.minutes) || null, date: r.date || todayISO(), created_at: new Date().toISOString() }); count++; });
+      if (Array.isArray(body.habits)) body.habits.filter(r => r.name).forEach(r => { habits.push({ id: _uid(), name: String(r.name).slice(0,40), emoji: (r.emoji || '🎯').slice(0,4), color: (r.color && /^#[0-9a-fA-F]{6}$/.test(r.color)) ? r.color : '#2563eb', created_at: new Date().toISOString() }); count++; });
+      if (Array.isArray(body.habitLogs)) body.habitLogs.filter(r => r.habitId && r.date).forEach(r => { habitLogs.push({ id: _uid(), habitId: String(r.habitId), date: String(r.date), created_at: new Date().toISOString() }); count++; });
       _save(db); return { imported: count };
     }
   }
@@ -551,6 +619,8 @@ async function api(path, opts = {}) {
     if (resource === 'watchlist' && id) { const l = _col(db, 'watchlist', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
     if (resource === 'books' && id) { const l = _col(db, 'books', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
     if (resource === 'edu' && id) { const l = _col(db, 'edu', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
+    if (resource === 'habits' && id) { const l = _col(db, 'habits', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); const logs = _col(db, 'habitLogs', []); for (let j = logs.length - 1; j >= 0; j--) if (logs[j].habitId === id) logs.splice(j,1); _save(db); return { ok: true }; }
+    if (resource === 'habit-logs' && id) { const l = _col(db, 'habitLogs', []); const i = l.findIndex(r => r.id === id); if (i >= 0) l.splice(i,1); _save(db); return { ok: true }; }
   }
   throw new Error('接口不存在');
 }
@@ -626,8 +696,10 @@ async function cloudApi(path, opts, cloud) {
     if (resource === 'books') return sbReq(cloud, 'GET', 'books', { query: `select=*&order=date.desc,created_at.desc&limit=500&${O}` });
     if (resource === 'edu') return sbReq(cloud, 'GET', 'edu_records', { query: `select=*&order=date.desc,created_at.desc&limit=200&${O}` });
     if (resource === 'edu-progress') { const row = await sbReq(cloud, 'GET', 'edu_progress', { query: `select=*&id=eq.1&${O}`, single: true }); return row || { id: 1, level: 0, chars: 0 }; }
+    if (resource === 'habits') return sbReq(cloud, 'GET', 'habits', { query: `select=*&order=created_at.asc&${O}` });
+    if (resource === 'habit-logs') return sbReq(cloud, 'GET', 'habit_logs', { query: `select=*&${O}` });
     if (resource === 'etf-advice') return sbReq(cloud, 'GET', 'etf_advice', { query: `select=*&order=advice_date.desc&limit=30&${O}` });
-    if (resource === 'export') { const [todos, books, edu] = await Promise.all([sbReq(cloud, 'GET', 'todos', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'books', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'edu_records', { query: `select=*&${O}` })]); return { todos, books, edu, exported_at: new Date().toISOString() }; }
+    if (resource === 'export') { const [todos, books, edu, habits, logs] = await Promise.all([sbReq(cloud, 'GET', 'todos', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'books', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'edu_records', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'habits', { query: `select=*&${O}` }), sbReq(cloud, 'GET', 'habit_logs', { query: `select=*&${O}` })]); return { todos, books, edu, habits, habitLogs: logs, exported_at: new Date().toISOString() }; }
     if (resource === 'health') return { ok: true, db: true };
     throw new Error('接口不存在');
   }
@@ -637,11 +709,14 @@ async function cloudApi(path, opts, cloud) {
     if (resource === 'books') { const amount = parseFloat(body.amount); if (isNaN(amount) || amount <= 0) throw new Error('金额无效'); return sbReq(cloud, 'POST', 'books', { body: { id: _uuid(), type: body.type === 'income' ? 'income' : 'expense', category: String(body.category || '其他').slice(0, 20), amount, note: body.note ? String(body.note).slice(0, 300) : '', date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }); }
     if (resource === 'edu') { if (!body.content || !String(body.content).trim()) throw new Error('内容不能为空'); return sbReq(cloud, 'POST', 'edu_records', { body: { id: _uuid(), kind: body.kind === 'exercise' ? 'exercise' : 'study', content: String(body.content).trim().slice(0, 500), minutes: Number.isInteger(body.minutes) ? body.minutes : (parseInt(body.minutes) || null), date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }); }
     if (resource === 'etf-advice') { if (!body.content || !String(body.content).trim()) throw new Error('内容不能为空'); return sbReq(cloud, 'POST', 'etf_advice', { body: { id: _uuid(), content: String(body.content).slice(0, 10000), advice_date: body.advice_date || todayISO(), owner: cloud.pass }, single: true }); }
+    if (resource === 'habits') { if (!body.name || !String(body.name).trim()) throw new Error('习惯名称不能为空'); return sbReq(cloud, 'POST', 'habits', { body: { id: _uuid(), name: String(body.name).trim().slice(0, 40), emoji: (body.emoji || '🎯').slice(0, 4), color: (body.color && /^#[0-9a-fA-F]{6}$/.test(body.color)) ? body.color : '#2563eb', created_at: new Date().toISOString(), owner: cloud.pass }, single: true }); }
+    if (resource === 'habit-logs') { return sbReq(cloud, 'POST', 'habit_logs', { body: { id: _uuid(), habit_id: String(body.habitId), date: String(body.date), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }); }
     if (resource === 'quick') {
       if (body.k) { const keys = await sbReq(cloud, 'GET', 'used_keys', { query: `select=k&k=eq.${encodeURIComponent(body.k)}&${O}` }); if (keys.length) return { duplicate: true }; await sbReq(cloud, 'POST', 'used_keys', { body: { id: _uuid(), k: String(body.k).slice(0, 100), owner: cloud.pass } }); }
       if (body.todo) return { type: 'todo', row: await sbReq(cloud, 'POST', 'todos', { body: { id: _uuid(), title: String(body.todo).slice(0, 500), due_date: body.date || null, priority: ['high', 'normal', 'low'].includes(body.pri) ? body.pri : 'normal', status: 'open', created_at: new Date().toISOString(), owner: cloud.pass }, single: true }) };
       if (body.book) { const amount = parseFloat(body.amount); if (isNaN(amount) || amount <= 0) throw new Error('金额无效'); return { type: 'book', row: await sbReq(cloud, 'POST', 'books', { body: { id: _uuid(), type: body.book === 'in' ? 'income' : 'expense', category: String(body.cat || '其他').slice(0, 20), amount, note: body.note ? String(body.note).slice(0, 300) : '', date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }) }; }
       if (body.edu) { if (!body.content) throw new Error('内容不能为空'); return { type: 'edu', row: await sbReq(cloud, 'POST', 'edu_records', { body: { id: _uuid(), kind: body.edu === 'exercise' ? 'exercise' : 'study', content: String(body.content).slice(0, 500), minutes: parseInt(body.minutes) || null, date: body.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass }, single: true }) }; }
+      if (body.habit) { return { type: 'habit', row: await sbReq(cloud, 'POST', 'habits', { body: { id: _uuid(), name: String(body.habit).slice(0, 40), emoji: (body.emoji || '🎯').slice(0, 4), color: '#2563eb', created_at: new Date().toISOString(), owner: cloud.pass }, single: true }) }; }
       throw new Error('缺少录入内容');
     }
     if (resource === 'import') {
@@ -649,12 +724,14 @@ async function cloudApi(path, opts, cloud) {
       if (Array.isArray(body.todos)) { const rows = body.todos.filter(r => r.title).map(r => ({ id: _uuid(), title: String(r.title).slice(0, 500), due_date: r.due_date || null, priority: ['low', 'normal', 'high'].includes(r.priority) ? r.priority : 'normal', status: r.status === 'done' ? 'done' : 'open', created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'todos', { body: rows }); count += rows.length; } }
       if (Array.isArray(body.books)) { const rows = body.books.filter(r => r.amount > 0).map(r => ({ id: _uuid(), type: r.type === 'income' ? 'income' : 'expense', category: String(r.category || '其他').slice(0, 20), amount: parseFloat(r.amount), note: r.note ? String(r.note).slice(0, 300) : '', date: r.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'books', { body: rows }); count += rows.length; } }
       if (Array.isArray(body.edu)) { const rows = body.edu.filter(r => r.content).map(r => ({ id: _uuid(), kind: r.kind === 'exercise' ? 'exercise' : 'study', content: String(r.content).slice(0, 500), minutes: parseInt(r.minutes) || null, date: r.date || todayISO(), created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'edu_records', { body: rows }); count += rows.length; } }
+      if (Array.isArray(body.habits)) { const rows = body.habits.filter(r => r.name).map(r => ({ id: _uuid(), name: String(r.name).slice(0, 40), emoji: (r.emoji || '🎯').slice(0, 4), color: (r.color && /^#[0-9a-fA-F]{6}$/.test(r.color)) ? r.color : '#2563eb', created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'habits', { body: rows }); count += rows.length; } }
+      if (Array.isArray(body.habitLogs)) { const rows = body.habitLogs.filter(r => r.habitId && r.date).map(r => ({ id: _uuid(), habit_id: String(r.habitId), date: String(r.date), created_at: new Date().toISOString(), owner: cloud.pass })); if (rows.length) { await sbReq(cloud, 'POST', 'habit_logs', { body: rows }); count += rows.length; } }
       return { imported: count };
     }
   }
   if (method === 'PATCH') { if (resource === 'todos' && id) { const patch = {}; if (body.status) { patch.status = body.status; patch.done_at = body.status === 'done' ? new Date().toISOString() : null; } if (body.title) patch.title = String(body.title).trim().slice(0, 500); return sbReq(cloud, 'PATCH', 'todos', { body: patch, query: `id=eq.${id}&${O}`, single: true }); } }
   if (method === 'PUT') { if (resource === 'edu-progress') { const lv = Math.max(0, Math.min(50, parseInt(body.level) || 0)); const ch = Math.max(0, parseInt(body.chars) || 0); return sbReq(cloud, 'PATCH', 'edu_progress', { body: { level: lv, chars: ch }, query: `id=eq.1&${O}`, single: true }); } }
-  if (method === 'DELETE') { if (resource === 'todos' && id) return sbReq(cloud, 'DELETE', 'todos', { query: `id=eq.${id}&${O}` }); if (resource === 'watchlist' && id) return sbReq(cloud, 'DELETE', 'watchlist', { query: `id=eq.${id}&${O}` }); if (resource === 'books' && id) return sbReq(cloud, 'DELETE', 'books', { query: `id=eq.${id}&${O}` }); if (resource === 'edu' && id) return sbReq(cloud, 'DELETE', 'edu_records', { query: `id=eq.${id}&${O}` }); }
+  if (method === 'DELETE') { if (resource === 'todos' && id) return sbReq(cloud, 'DELETE', 'todos', { query: `id=eq.${id}&${O}` }); if (resource === 'watchlist' && id) return sbReq(cloud, 'DELETE', 'watchlist', { query: `id=eq.${id}&${O}` }); if (resource === 'books' && id) return sbReq(cloud, 'DELETE', 'books', { query: `id=eq.${id}&${O}` }); if (resource === 'edu' && id) return sbReq(cloud, 'DELETE', 'edu_records', { query: `id=eq.${id}&${O}` }); if (resource === 'habits' && id) { await sbReq(cloud, 'DELETE', 'habits', { query: `id=eq.${id}&${O}` }); await sbReq(cloud, 'DELETE', 'habit_logs', { query: `habit_id=eq.${id}&${O}` }); return { ok: true }; } if (resource === 'habit-logs' && id) return sbReq(cloud, 'DELETE', 'habit_logs', { query: `id=eq.${id}&${O}` }); }
   throw new Error('接口不存在');
 }
 
@@ -676,6 +753,11 @@ function renderWxFields() {
       <input type="number" id="wx-book-amt" placeholder="金额" style="width:110px" step="0.01">
       <input type="text" id="wx-book-note" placeholder="备注" style="flex:1;min-width:120px">
       <input type="date" id="wx-book-date" value="${today}">
+    </div>`;
+  } else if (type === 'habit') {
+    box.innerHTML = `<div class="row">
+      <input type="text" id="wx-habit-name" placeholder="习惯名称（如：喝水/阅读/运动）" style="flex:1;min-width:200px">
+      <input type="text" id="wx-habit-emoji" placeholder="图标(可选)" style="width:90px">
     </div>`;
   } else {
     box.innerHTML = `<div class="row">
@@ -703,6 +785,10 @@ function genWxLink() {
     params.set('cat', $('#wx-book-cat').value);
     const note = $('#wx-book-note').value.trim(); if (note) params.set('note', note);
     const d = $('#wx-book-date').value; if (d) params.set('date', d);
+  } else if (type === 'habit') {
+    const name = $('#wx-habit-name').value.trim(); if (!name) return toast('请输入习惯名称');
+    params.set('habit', name);
+    const emoji = $('#wx-habit-emoji').value.trim(); if (emoji) params.set('emoji', emoji);
   } else {
     const content = $('#wx-edu-content').value.trim(); if (!content) return toast('请输入内容');
     params.set('edu', $('#wx-edu-kind').value === 'exercise' ? 'exercise' : 'study');
@@ -1035,6 +1121,110 @@ async function delEdu(id) {
   catch (e) { toast(e.message); }
 }
 
+// ---------- 习惯打卡 ----------
+let allHabits = [], allHabitLogs = [];
+function dateMinus(d, n) { const [y, m, dd] = d.split('-').map(Number); const x = new Date(Date.UTC(y, m - 1, dd)); x.setUTCDate(x.getUTCDate() - n); return x.toISOString().slice(0, 10); }
+const WEEK_CN = ['日', '一', '二', '三', '四', '五', '六'];
+function computeStreak(habitId, logs) {
+  const set = new Set(logs.filter(l => l.habitId === habitId).map(l => l.date));
+  let d = todayISO();
+  if (!set.has(d)) d = dateMinus(d, 1);
+  let streak = 0;
+  while (set.has(d)) { streak++; d = dateMinus(d, 1); }
+  return streak;
+}
+async function loadHabits() {
+  try {
+    [allHabits, allHabitLogs] = await Promise.all([api('habits'), api('habit-logs')]);
+  } catch (e) {
+    const box = $('#habit-list'); if (box) box.innerHTML = `<div class="empty">加载失败：${esc(e.message)}</div>`;
+    return;
+  }
+  const today = todayISO();
+  const grid = $('#habit-list');
+  if (grid) {
+    grid.innerHTML = allHabits.length ? '' : '<div class="empty">还没有习惯，先在上方添加一个吧</div>';
+    allHabits.forEach(h => {
+      const logs = allHabitLogs.filter(l => l.habitId === h.id);
+      const checkedToday = logs.some(l => l.date === today);
+      const streak = computeStreak(h.id, allHabitLogs);
+      const total = logs.length;
+      const card = document.createElement('div');
+      card.className = 'habit-card';
+      card.innerHTML = `
+        <div class="habit-top">
+          <span class="habit-emoji">${esc(h.emoji || '🎯')}</span>
+          <span class="habit-name">${esc(h.name)}</span>
+          <button class="btn ghost" onclick="delHabit('${h.id}')">✕</button>
+        </div>
+        <div class="habit-streak">🔥 连续 ${streak} 天 · 累计 ${total} 次</div>
+        <button class="habit-check ${checkedToday ? 'on' : 'off'}" onclick="toggleHabit('${h.id}','${today}')">${checkedToday ? '✓ 今日已打卡' : '打卡（今天）'}</button>
+        <div class="habit-calendar">${renderHabitWeek(h.id, allHabitLogs)}</div>`;
+      grid.appendChild(card);
+    });
+  }
+  updateHabitStat();
+  renderHabitLogList();
+}
+function renderHabitWeek(habitId, logs) {
+  const set = new Set(logs.filter(l => l.habitId === habitId).map(l => l.date));
+  const today = todayISO();
+  let html = '';
+  for (let i = 6; i >= 0; i--) {
+    const d = dateMinus(today, i);
+    const done = set.has(d);
+    const w = WEEK_CN[new Date(d + 'T00:00:00').getDay()];
+    html += `<div class="habit-cal-cell ${done ? 'done' : ''} ${i === 0 ? 'today' : ''}">${w}<br>${done ? '✓' : d.slice(5)}</div>`;
+  }
+  return html;
+}
+function updateHabitStat() {
+  const total = allHabits.length;
+  const today = todayISO();
+  const done = allHabits.filter(h => allHabitLogs.some(l => l.habitId === h.id && l.date === today)).length;
+  const stat = $('#st-habit'); if (stat) stat.textContent = total ? `${done}/${total}` : '–';
+  const cnt = $('#habit-today-count'); if (cnt) cnt.textContent = total ? `（今日 ${done}/${total} 已完成）` : '';
+}
+function renderHabitLogList() {
+  const box = $('#habit-log-list'); if (!box) return;
+  const rows = allHabitLogs.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const nameOf = id => (allHabits.find(h => h.id === id) || {}).name || '（已删除）';
+  const emojiOf = id => (allHabits.find(h => h.id === id) || {}).emoji || '🎯';
+  box.innerHTML = rows.length ? '' : '<div class="empty">暂无打卡记录</div>';
+  rows.slice(0, 80).forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'edu-item';
+    d.innerHTML = `<div class="edu-date">${esc(r.date)} · ${esc(emojiOf(r.habitId))} ${esc(nameOf(r.habitId))} <button class="btn ghost" style="float:right" onclick="delHabitLog('${r.id}')">删除</button></div>`;
+    box.appendChild(d);
+  });
+}
+async function addHabit() {
+  const name = $('#habit-name').value.trim();
+  if (!name) return toast('请输入习惯名称');
+  try {
+    await api('habits', { method: 'POST', body: { name, emoji: $('#habit-emoji').value.trim() || '🎯', color: $('#habit-color').value } });
+    $('#habit-name').value = ''; $('#habit-emoji').value = '';
+    toast('已添加习惯'); loadHabits();
+  } catch (e) { toast(e.message); }
+}
+async function toggleHabit(id, date) {
+  const exists = allHabitLogs.find(l => l.habitId === id && l.date === date);
+  try {
+    if (exists) await api('habit-logs/' + exists.id, { method: 'DELETE' });
+    else await api('habit-logs', { method: 'POST', body: { habitId: id, date } });
+    loadHabits();
+  } catch (e) { toast(e.message); }
+}
+async function delHabit(id) {
+  if (typeof confirm === 'function' && !confirm('删除该习惯及其全部打卡记录？')) return;
+  try { await api('habits/' + id, { method: 'DELETE' }); loadHabits(); toast('已删除'); }
+  catch (e) { toast(e.message); }
+}
+async function delHabitLog(id) {
+  try { await api('habit-logs/' + id, { method: 'DELETE' }); loadHabits(); toast('已删除'); }
+  catch (e) { toast(e.message); }
+}
+
 // ---------- 统计 ----------
 function refreshStats() {
   const open = allTodos.filter(r => r.status !== 'done');
@@ -1096,6 +1286,9 @@ async function processHash() {
     payload.content = params.get('content');
     if (params.get('minutes')) payload.minutes = params.get('minutes');
     if (params.get('date')) payload.date = params.get('date');
+  } else if (params.get('habit')) {
+    payload.habit = params.get('habit');
+    if (params.get('emoji')) payload.emoji = params.get('emoji');
   } else {
     return;
   }
@@ -1105,13 +1298,14 @@ async function processHash() {
     if (r.type === 'todo') { toast('已录入待办：' + payload.todo.slice(0, 24)); loadTodos(); }
     if (r.type === 'book') { toast('已记账：' + Number(payload.amount).toFixed(2) + '元'); loadBook(); }
     if (r.type === 'edu') { toast('已打卡：' + payload.content.slice(0, 24)); loadEdu(); }
+    if (r.type === 'habit') { toast('已添加习惯：' + payload.habit.slice(0, 24)); loadHabits(); }
   } catch (e) { toast('录入失败：' + e.message); }
 }
 
 // 初始化
 applySettings();
 renderWxFields();
-loadTodos(); loadWatchlist(); loadEtfAdvice(); loadBook(); loadEdu(); processHash();
+loadTodos(); loadWatchlist(); loadEtfAdvice(); loadBook(); loadEdu(); loadHabits(); processHash();
 </script>
 </body>
 </html>
