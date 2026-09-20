@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安全生产宣传展示</title>
+<style>
+  :root {
+    --red: #e53935;
+    --red-dark: #b71c1c;
+    --ink: #263238;
+    --muted: #78909c;
+    --bg: #f5f7f9;
+    --card: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+
+  /* 顶部横幅 */
+  .hero {
+    background: linear-gradient(135deg, var(--red-dark) 0%, var(--red) 60%, #ef6c00 100%);
+    color: #fff;
+    text-align: center;
+    padding: 72px 20px 64px;
+  }
+  .hero .badge {
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,.6);
+    border-radius: 999px;
+    padding: 4px 16px;
+    font-size: 13px;
+    letter-spacing: 4px;
+    margin-bottom: 18px;
+    opacity: .92;
+  }
+  .hero h1 {
+    font-size: clamp(30px, 6vw, 52px);
+    letter-spacing: 10px;
+    font-weight: 800;
+  }
+  .hero p {
+    margin-top: 14px;
+    font-size: clamp(14px, 2.2vw, 17px);
+    opacity: .92;
+    letter-spacing: 2px;
+  }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 0 20px 60px; }
+
+  section { margin-top: 56px; }
+  .sec-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .sec-title .bar { width: 5px; height: 26px; border-radius: 3px; background: var(--red); flex: none; }
+  .sec-title h2 { font-size: 22px; letter-spacing: 3px; }
+  .sec-title span { color: var(--muted); font-size: 13px; letter-spacing: 1px; }
+
+  /* 宣传片 */
+  .video-wrap {
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.18);
+  }
+  video { width: 100%; height: auto; display: block; }
+  .src-note {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .src-note a {
+    color: var(--red);
+    text-decoration: none;
+    border: 1px solid var(--red);
+    border-radius: 999px;
+    padding: 5px 16px;
+    font-size: 13px;
+    transition: background .2s, color .2s;
+    white-space: nowrap;
+  }
+  .src-note a:hover { background: var(--red); color: #fff; }
+
+  /* 海报画廊 */
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .gallery figure {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--card);
+    box-shadow: 0 3px 12px rgba(0,0,0,.08);
+    cursor: zoom-in;
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .gallery figure:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.14); }
+  .gallery img {
+    width: 100%;
+    height: 320px;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+  }
+  .gallery figcaption {
+    padding: 10px 12px;
+    font-size: 14px;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  /* 灯箱 */
+  .lightbox {
+    position: fixed; inset: 0;
+    background: rgba(10, 14, 18, .92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 24px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 92vw;
+    max-height: 88vh;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  }
+  .lightbox .btn {
+    position: absolute;
+    background: rgba(255,255,255,.14);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 46px; height: 46px;
+    font-size: 22px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s;
+    user-select: none;
+  }
+  .lightbox .btn:hover { background: rgba(255,255,255,.3); }
+  .lightbox .close { top: 20px; right: 20px; }
+  .lightbox .prev { left: 16px; top: 50%; transform: translateY(-50%); }
+  .lightbox .next { right: 16px; top: 50%; transform: translateY(-50%); }
+  .lightbox .counter {
+    position: absolute;
+    bottom: 22px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.8);
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+
+  footer {
+    text-align: center;
+    padding: 36px 20px 44px;
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+
+  @media (max-width: 560px) {
+    .hero { padding: 52px 16px 44px; }
+    .hero h1 { letter-spacing: 6px; }
+    .gallery { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .gallery img { height: 200px; }
+    .gallery figcaption { font-size: 12px; padding: 8px 6px; }
+    .lightbox .prev { left: 6px; }
+    .lightbox .next { right: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="badge">安全生产 · 人人有责</div>
+  <h1>安全生产宣传展示</h1>
+  <p>安全用电 · 高处作业 · 事故预防措施</p>
+</header>
+
+<main>
+  <section>
+    <div class="sec-title"><div class="bar"></div><h2>宣传视频</h2><span>安全宣传片</span></div>
+    <div class="video-wrap">
+      <video controls preload="metadata" poster="media/poster.jpg" playsinline>
+        <source src="media/promo_full.mp4" type="video/mp4">
+        您的浏览器不支持 HTML5 视频播放。
+      </video>
+    </div>
+    <div class="src-note">
+      <span>片源：湖南省住房和城乡建设厅官网</span>
+      <a href="https://zjt.hunan.gov.cn/zjt/gzdt/xwzx/202511/t20251106_33843777.html" target="_blank" rel="noopener">观看原版页面 →</a>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-title"><div class="bar"></div><h2>宣传海报</h2><span>共 12 张 · 点击查看大图</span></div>
+    <div class="gallery" id="gallery"></div>
+  </section>
+</main>
+
+<footer>
+  生命至上 · 安全第一 &nbsp;|&nbsp; © 2026 安全生产宣传展示
+</footer>
+
+<div class="lightbox" id="lightbox">
+  <button class="btn close" id="lbClose" title="关闭">✕</button>
+  <button class="btn prev" id="lbPrev" title="上一张">‹</button>
+  <img id="lbImg" src="" alt="海报大图">
+  <button class="btn next" id="lbNext" title="下一张">›</button>
+  <div class="counter" id="lbCounter"></div>
+</div>
+
+<script>
+  var titles = [
+    "临时用电安全", "物体打击预防", "预防坍塌事故", "消防安全常识",
+    "高处作业安全", "机械伤害预防", "预防中毒窒息", "什么是小微工程",
+    "小微工程的主要特性", "事故预防措施（一）", "事故预防措施（二）", "事故预防措施（三）"
+  ];
+  var gallery = document.getElementById('gallery');
+  for (var i = 1; i <= 12; i++) {
+    var fig = document.createElement('figure');
+    fig.setAttribute('data-idx', i - 1);
+    fig.innerHTML = '<img src="media/' + i + '.jpg" alt="' + titles[i-1] + '" loading="lazy">' +
+                    '<figcaption>' + titles[i-1] + '</figcaption>';
+    fig.addEventListener('click', function(){ openLb(parseInt(this.getAttribute('data-idx'), 10)); });
+    gallery.appendChild(fig);
+  }
+
+  var lb = document.getElementById('lightbox'),
+      lbImg = document.getElementById('lbImg'),
+      lbCounter = document.getElementById('lbCounter'),
+      current = 0;
+  function showLb(n) {
+    current = (n + 12) % 12;
+    lbImg.src = 'media/' + (current + 1) + '.jpg';
+    lbCounter.textContent = (current + 1) + ' / 12';
+  }
+  function openLb(n) { showLb(n); lb.classList.add('open'); document.body.style.overflow = 'hidden'; }
+  function closeLb() { lb.classList.remove('open'); document.body.style.overflow = ''; }
+  document.getElementById('lbClose').addEventListener('click', closeLb);
+  document.getElementById('lbPrev').addEventListener('click', function(e){ e.stopPropagation(); showLb(current - 1); });
+  document.getElementById('lbNext').addEventListener('click', function(e){ e.stopPropagation(); showLb(current + 1); });
+  lb.addEventListener('click', function(e){ if (e.target === lb) closeLb(); });
+  document.addEventListener('keydown', function(e){
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') closeLb();
+    else if (e.key === 'ArrowLeft') showLb(current - 1);
+    else if (e.key === 'ArrowRight') showLb(current + 1);
+  });
+</script>
+</body>
+</html>
